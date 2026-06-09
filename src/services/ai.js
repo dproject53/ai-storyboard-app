@@ -67,27 +67,23 @@ Berikan HANYA format JSON murni.
 };
 
 export const generateImageFromPrompt = async (imagePrompt) => {
-  // Mendeteksi apakah kita berjalan di Production (Vercel) atau Lokal (Vite Dev Server)
-  // Vercel menggunakan path '/api/generate-image', sedangkan lokal menggunakan port 3001
-  const backendUrl = import.meta.env.PROD 
-    ? "/api/generate-image" 
-    : "http://localhost:3001/api/generate-image";
-
   const hfApiToken = localStorage.getItem('hfApiKey');
   if (!hfApiToken) {
     throw new Error("Hugging Face Token belum dimasukkan. Silakan isi di menu Settings.");
   }
 
+  // Kita panggil Hugging Face SECARA LANGSUNG dari browser pengguna.
+  // Ini menghindari pemblokiran IP oleh server Vercel (Error 500 fetch failed).
+  const modelUrl = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
+
   try {
-    const response = await fetch(backendUrl, {
+    const response = await fetch(modelUrl, {
       method: "POST",
       headers: {
+        "Authorization": `Bearer ${hfApiToken}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ 
-        prompt: imagePrompt,
-        hfToken: hfApiToken 
-      })
+      body: JSON.stringify({ inputs: imagePrompt })
     });
 
     if (!response.ok) {
