@@ -94,9 +94,28 @@ Kembalikan dalam format JSON array yang persis seperti ini, tanpa markdown block
 };
 
 export const generateImageFromPrompt = async (imagePrompt) => {
-  const seed = Math.floor(Math.random() * 1000000);
-  const encodedPrompt = encodeURIComponent(imagePrompt);
-  // Kita kembalikan URL langsung agar browser (tag <img>) yang mengunduhnya secara native.
-  // Ini 100% dijamin berhasil karena tidak bisa diblokir oleh anti-bot fetch API.
-  return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=450&nologo=true&seed=${seed}`;
+  const hfToken = localStorage.getItem('hfApiKey');
+  
+  if (hfToken) {
+    // Gunakan Hugging Face jika pengguna memasukkan token
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
+      {
+        headers: {
+          Authorization: `Bearer ${hfToken}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({ inputs: imagePrompt }),
+      }
+    );
+    if (!response.ok) throw new Error("Hugging Face API gagal memproses gambar.");
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  } else {
+    // Fallback ke server gambar gratis jika tidak ada token
+    const seed = Math.floor(Math.random() * 1000000);
+    const encodedPrompt = encodeURIComponent(imagePrompt);
+    return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=450&nologo=true&seed=${seed}`;
+  }
 };
