@@ -70,7 +70,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
 
           <div>
             <label className="block text-sm font-bold text-gray-300 mb-2">
-              GEMINI API KEY
+              GEMINI API KEY (Untuk Naskah)
             </label>
             <input
               type="password"
@@ -81,6 +81,22 @@ const SettingsModal = ({ isOpen, onClose }) => {
             />
             <p className="text-xs text-gray-500 mt-2">
               Belum punya? Dapatkan gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:underline">Google AI Studio</a>.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-300 mb-2">
+              HUGGING FACE TOKEN (Untuk Gambar)
+            </label>
+            <input
+              type="password"
+              value={hfKey}
+              onChange={(e) => setHfKey(e.target.value)}
+              className="w-full bg-[#16171d] border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-[#22d3ee] transition-colors"
+              placeholder="hf_..."
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              Dibutuhkan karena server gambar gratis diblokir oleh provider internet Anda. Dapatkan di <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:underline">Hugging Face</a>.
             </p>
           </div>
 
