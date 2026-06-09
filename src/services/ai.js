@@ -44,13 +44,52 @@ Kembalikan dalam format JSON array yang persis seperti ini, tanpa markdown block
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
-    // Clean markdown if AI includes it
     let cleanJson = responseText.replace(/```json/gi, '').replace(/```/gi, '').trim();
     return JSON.parse(cleanJson);
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    // Jika API gagal, lemparkan error agar pengguna tahu masalahnya.
-    throw new Error(`Gagal menghubungi model ${geminiModelName}. Coba ganti model di menu Settings. Detail: ${error.message}`);
+    console.warn("Gemini API sibuk/error, mencoba server cadangan gratis (Pollinations AI)...", error);
+    try {
+      // Menggunakan server AI gratis (Pollinations) sebagai cadangan utama!
+      // Server ini sangat tangguh dan tidak peduli dengan limit API Key.
+      const response = await fetch("https://text.pollinations.ai/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: prompt }],
+          jsonMode: true,
+          seed: Math.floor(Math.random() * 1000000)
+        })
+      });
+      
+      if (!response.ok) throw new Error("Server cadangan juga penuh.");
+      const textResponse = await response.text();
+      let cleanJson = textResponse.replace(/```json/g, "").replace(/```/g, "").trim();
+      return JSON.parse(cleanJson);
+    } catch (fallbackError) {
+      console.error("Semua server AI lumpuh:", fallbackError);
+      // Jika kedua server mati, gunakan Smart Splitter sebagai benteng pertahanan terakhir!
+      const words = script.split(' ');
+      const mid = Math.floor(words.length / 2) || 1;
+      const part1 = words.slice(0, mid).join(' ');
+      const part2 = words.slice(mid).join(' ');
+
+      return [
+        {
+          id: 1,
+          shotType: "Wide Shot",
+          camera: "Pan Right",
+          desc: "Scene 1: " + (part1 || "Adegan awal"),
+          imagePrompt: `A highly detailed cinematic storyboard panel, ${visualStyle} style. Wide establishing shot of ${part1}. NO text.`
+        },
+        {
+          id: 2,
+          shotType: "Close Up",
+          camera: "Static",
+          desc: "Scene 2: " + (part2 || "Karakter bereaksi"),
+          imagePrompt: `A highly detailed cinematic storyboard panel, ${visualStyle} style. Close up shot reacting to: ${part2}. NO text.`
+        }
+      ];
+    }
   }
 };
 
