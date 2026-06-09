@@ -89,22 +89,41 @@ Kembalikan dalam format JSON array yang persis seperti ini, tanpa markdown block
 };
 
 export const generateImageFromPrompt = async (imagePrompt) => {
-  const response = await fetch("/api/generate-image", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt: imagePrompt })
-  });
-
-  if (!response.ok) {
-    let errorMsg = "Gagal membuat gambar.";
+  // === LAPIS 1: Puter.js — AI Image Generator gratis tanpa API Key ===
+  // Puter.js menggunakan server mereka sendiri, jadi TIDAK terblokir ISP!
+  if (window.puter && window.puter.ai && window.puter.ai.txt2img) {
     try {
-      const errorData = await response.json();
-      if (errorData.error) errorMsg = errorData.error;
-    } catch (e) { }
-    throw new Error(errorMsg);
+      console.log("Mencoba Puter.js AI Image...");
+      const imageBlob = await window.puter.ai.txt2img(imagePrompt);
+      if (imageBlob && imageBlob.size > 0) {
+        return URL.createObjectURL(imageBlob);
+      }
+    } catch (puterError) {
+      console.warn("Puter.js gagal, mencoba server cadangan:", puterError);
+    }
   }
 
-  const blob = await response.blob();
-  return URL.createObjectURL(blob);
-};
+  // === LAPIS 2: Vercel Proxy → LoremFlickr (foto stok relevan) ===
+  // Server Vercel di Amerika mengambilkan gambar dari LoremFlickr
+  try {
+    console.log("Mencoba Vercel proxy...");
+    const response = await fetch("/api/generate-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: imagePrompt })
+    });
 
+    if (response.ok) {
+      const blob = await response.blob();
+      if (blob.size > 0) {
+        return URL.createObjectURL(blob);
+      }
+    }
+  } catch (proxyError) {
+    console.warn("Vercel proxy gagal:", proxyError);
+  }
+
+  // === LAPIS 3: Picsum (gambar acak tapi pasti muncul) ===
+  const seed = Math.floor(Math.random() * 1000);
+  return `https://picsum.photos/seed/${seed}/800/450`;
+};
