@@ -42,12 +42,21 @@ Berikan HANYA format JSON murni.
     const responseText = result.response.text();
     // Clean markdown if AI includes it
     let cleanJson = responseText.replace(/```json/gi, '').replace(/```/gi, '').trim();
-    // Kadang ada sisa whitespace
     return JSON.parse(cleanJson);
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    // Kita Lempar Errornya agar pengguna tahu bahwa API Key mereka salah/limit.
-    throw new Error(`Gagal menghubungi Gemini AI. Pastikan API Key Anda benar dan memiliki kuota. Detail: ${error.message}`);
+    console.warn("Gemini API Error, mencoba server cadangan gratis (Pollinations Text)...", error);
+    try {
+      // Menggunakan Pollinations Text API sebagai cadangan jika Gemini gagal (tanpa API Key!)
+      const fallbackUrl = `https://text.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
+      const response = await fetch(fallbackUrl);
+      if (!response.ok) throw new Error("Fallback server penuh.");
+      const textResponse = await response.text();
+      const cleanJson = textResponse.replace(/```json/g, "").replace(/```/g, "").trim();
+      return JSON.parse(cleanJson);
+    } catch (fallbackError) {
+      console.error("Semua server AI sibuk:", fallbackError);
+      throw new Error(`Kunci Gemini API Anda tidak memiliki akses ke model AI (mungkin belum mengaktifkan Generative Language API). Silakan buat kunci baru di Google AI Studio. Error asli: ${error.message}`);
+    }
   }
 };
 
