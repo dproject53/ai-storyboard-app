@@ -105,7 +105,12 @@ export const generateImageFromPrompt = async (imagePrompt) => {
   });
 
   if (!response.ok) {
-    throw new Error("Gagal mengambil gambar dari server Vercel.");
+    let errorMsg = "Gagal mengambil gambar dari server Vercel.";
+    try {
+      const errorData = await response.json();
+      if (errorData.error) errorMsg = errorData.error;
+    } catch (e) { }
+    throw new Error(errorMsg);
   }
 
   const blob = await response.blob();
