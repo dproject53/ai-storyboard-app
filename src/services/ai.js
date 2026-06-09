@@ -89,18 +89,14 @@ Kembalikan dalam format JSON array yang persis seperti ini, tanpa markdown block
 };
 
 export const generateImageFromPrompt = async (imagePrompt) => {
-  const hfToken = localStorage.getItem('hfApiKey') || '';
-  
-  // Meminta server Vercel (Backend) untuk mengambilkan gambar.
-  // Ini 100% membobol blokir ISP karena browser hanya berkomunikasi dengan Vercel!
   const response = await fetch("/api/generate-image", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt: imagePrompt, hfToken })
+    body: JSON.stringify({ prompt: imagePrompt })
   });
 
   if (!response.ok) {
-    let errorMsg = "Gagal mengambil gambar dari server Vercel.";
+    let errorMsg = "Gagal membuat gambar.";
     try {
       const errorData = await response.json();
       if (errorData.error) errorMsg = errorData.error;
@@ -111,3 +107,4 @@ export const generateImageFromPrompt = async (imagePrompt) => {
   const blob = await response.blob();
   return URL.createObjectURL(blob);
 };
+
