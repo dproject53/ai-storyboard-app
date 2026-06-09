@@ -7,67 +7,50 @@ const hfApiToken = import.meta.env.VITE_HF_API_TOKEN;
 let genAI = null;
 
 export const generateStoryboardBreakdown = async (script, visualStyle) => {
-  const geminiApiKey = localStorage.getItem("geminiApiKey");
+  const geminiApiKey = localStorage.getItem('geminiApiKey');
+  const geminiModelName = localStorage.getItem('geminiModel') || "gemini-1.5-flash";
+
   if (!geminiApiKey) {
-    throw new Error("Kunci Gemini API belum diatur. Silakan masukkan di menu Settings.");
+    throw new Error("API Key belum dimasukkan. Silakan isi di menu Settings.");
   }
 
-  const genAI = new GoogleGenerativeAI(geminiApiKey);
-  // Menggunakan model terbaru yang didukung Google
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  try {
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    // Menggunakan model yang dipilih pengguna dari Settings
+    const model = genAI.getGenerativeModel({ model: geminiModelName });
 
-  const prompt = `
+    const prompt = `
 Anda adalah seorang Sutradara Ahli dan Storyboard Artist.
-Saya akan memberikan naskah/ide cerita. Tugas Anda adalah memecahnya menjadi adegan-adegan storyboard (maksimal 4 adegan untuk prototipe ini).
+Buatlah storyboard breakdown berdasarkan naskah berikut:
 
-Format yang saya minta adalah array JSON MURNI tanpa markdown, dengan struktur berikut:
+${script}
+
+PENTING:
+- Pecah cerita di atas menjadi beberapa adegan (scene) yang logis (idealnya 3-6 panel).
+- Untuk setiap panel, berikan deskripsi bahasa Indonesia yang detail tentang apa yang terjadi ("desc").
+- Untuk setiap panel, buatlah prompt bahasa Inggris ("imagePrompt") yang sangat spesifik, visual, dan deskriptif untuk AI Image Generator (contoh gaya: ${visualStyle}). Pastikan menyebutkan subjek, latar, pencahayaan, dan mood.
+- Jangan ada teks apa pun di dalam gambar (tulis "NO text" di setiap imagePrompt).
+
+Kembalikan dalam format JSON array yang persis seperti ini, tanpa markdown block, hanya array mentah:
 [
   {
     "id": 1,
-    "shotType": "tipe shot, misal: Wide Shot, Close Up",
-    "camera": "pergerakan kamera, misal: Pan Right, Static",
-    "desc": "deskripsi visual adegan / aksi / dialog",
-    "imagePrompt": "A highly detailed cinematic storyboard panel, \${visualStyle} style. [describe the scene visually based on desc and camera]. NO text or words in the image."
+    "shotType": "Wide Shot",
+    "camera": "Pan Right",
+    "desc": "Deskripsi adegan detail...",
+    "imagePrompt": "A highly detailed cinematic storyboard panel, ${visualStyle} style. [English description of the scene]. NO text."
   }
-]
+]`;
 
-Naskah:
-"${script}"
-
-Berikan HANYA format JSON murni.
-`;
-
-  try {
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
     // Clean markdown if AI includes it
     let cleanJson = responseText.replace(/```json/gi, '').replace(/```/gi, '').trim();
     return JSON.parse(cleanJson);
   } catch (error) {
-    console.warn("Gemini API Error, mengaktifkan Smart Fallback...", error);
-    // Jika API Key bermasalah (404/Limit), kita gunakan Naskah Pengguna secara langsung!
-    // Kita memecah naskah menjadi 2 bagian agar tetap relevan 100%.
-    const words = script.split(' ');
-    const mid = Math.floor(words.length / 2) || 1;
-    const part1 = words.slice(0, mid).join(' ');
-    const part2 = words.slice(mid).join(' ');
-
-    return [
-      {
-        id: 1,
-        shotType: "Wide Shot",
-        camera: "Pan Right",
-        desc: "Scene 1: " + (part1 || "Adegan awal"),
-        imagePrompt: `A highly detailed cinematic storyboard panel, ${visualStyle} style. Wide establishing shot of ${part1}. NO text.`
-      },
-      {
-        id: 2,
-        shotType: "Close Up",
-        camera: "Static",
-        desc: "Scene 2: " + (part2 || "Karakter bereaksi"),
-        imagePrompt: `A highly detailed cinematic storyboard panel, ${visualStyle} style. Close up shot reacting to: ${part2}. NO text.`
-      }
-    ];
+    console.error("Gemini API Error:", error);
+    // Jika API gagal, lemparkan error agar pengguna tahu masalahnya.
+    throw new Error(`Gagal menghubungi model ${geminiModelName}. Coba ganti model di menu Settings. Detail: ${error.message}`);
   }
 };
 
