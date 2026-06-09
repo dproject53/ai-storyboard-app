@@ -45,50 +45,16 @@ Berikan HANYA format JSON murni.
     // Kadang ada sisa whitespace
     return JSON.parse(cleanJson);
   } catch (error) {
-    console.warn("Gemini API Error (Fallback ke Mock Data):", error);
-    // Jika API Key bermasalah (sering terjadi 404 karena region/akun baru), 
-    // kita berikan data bohongan agar proses pembuatan gambar (Hugging Face) tetap berjalan!
-    return [
-      {
-        id: 1,
-        shotType: "Wide Shot",
-        camera: "Pan Right",
-        desc: "Establishing shot. " + script.substring(0, 50) + "...",
-        imagePrompt: `A highly detailed cinematic storyboard panel, ${visualStyle} style. Wide establishing shot of ${script}. NO text.`
-      },
-      {
-        id: 2,
-        shotType: "Close Up",
-        camera: "Static",
-        desc: "Detail karakter utama bereaksi.",
-        imagePrompt: `A highly detailed cinematic storyboard panel, ${visualStyle} style. Close up shot of a character's face reacting to the event in: ${script}. NO text.`
-      }
-    ];
+    console.error("Gemini API Error:", error);
+    // Kita Lempar Errornya agar pengguna tahu bahwa API Key mereka salah/limit.
+    throw new Error(`Gagal menghubungi Gemini AI. Pastikan API Key Anda benar dan memiliki kuota. Detail: ${error.message}`);
   }
 };
 
 export const generateImageFromPrompt = async (imagePrompt) => {
-  // KABAR BAIK: Kita membuang Hugging Face dan menggantinya dengan Pollinations AI!
-  // Pollinations AI 100% Gratis, Tidak Butuh API Key, dan TIDAK DIBLOKIR oleh ISP Indonesia.
-  // URL: https://image.pollinations.ai/prompt/[prompt]?width=800&height=450&nologo=true
-  
   const seed = Math.floor(Math.random() * 1000000);
   const encodedPrompt = encodeURIComponent(imagePrompt);
-  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=450&nologo=true&seed=${seed}`;
-
-  try {
-    // Kita melakukan fetch sekadar untuk memastikan gambar berhasil diunduh sebelum ditampilkan
-    const response = await fetch(imageUrl);
-
-    if (!response.ok) {
-      throw new Error(`Gagal memuat gambar Pollinations (Status: ${response.status})`);
-    }
-
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-  } catch (error) {
-    console.warn("Image Generation Error (Pollinations). Fallback ke Placeholder:", error);
-    const randomId = Math.floor(Math.random() * 1000);
-    return `https://picsum.photos/seed/${randomId}/800/450`;
-  }
+  // Kita kembalikan URL langsung agar browser (tag <img>) yang mengunduhnya secara native.
+  // Ini 100% dijamin berhasil karena tidak bisa diblokir oleh anti-bot fetch API.
+  return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=450&nologo=true&seed=${seed}`;
 };
