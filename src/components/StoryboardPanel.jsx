@@ -14,7 +14,7 @@ const StoryboardPanel = ({ index, data, onRegenerate, onEdit }) => {
       {/* Image Area */}
       <div style={{ 
         width: '100%', 
-        aspectRatio: '16/9', 
+        height: '220px', // FIX: Paksa tinggi tetap agar gambar tidak collapse!
         backgroundColor: 'var(--bg-input)', 
         display: 'flex', 
         alignItems: 'center', 
