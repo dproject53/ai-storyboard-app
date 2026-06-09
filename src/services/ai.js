@@ -89,41 +89,25 @@ Kembalikan dalam format JSON array yang persis seperti ini, tanpa markdown block
 };
 
 export const generateImageFromPrompt = async (imagePrompt) => {
-  // === LAPIS 1: Puter.js — AI Image Generator gratis tanpa API Key ===
-  // Puter.js menggunakan server mereka sendiri, jadi TIDAK terblokir ISP!
-  if (window.puter && window.puter.ai && window.puter.ai.txt2img) {
+  const hfToken = localStorage.getItem('hfApiKey') || '';
+  
+  // Meminta server Vercel (Backend) untuk mengambilkan gambar.
+  // Ini 100% membobol blokir ISP karena browser hanya berkomunikasi dengan Vercel!
+  const response = await fetch("/api/generate-image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: imagePrompt, hfToken })
+  });
+
+  if (!response.ok) {
+    let errorMsg = "Gagal mengambil gambar dari server Vercel.";
     try {
-      console.log("Mencoba Puter.js AI Image...");
-      const imageBlob = await window.puter.ai.txt2img(imagePrompt);
-      if (imageBlob && imageBlob.size > 0) {
-        return URL.createObjectURL(imageBlob);
-      }
-    } catch (puterError) {
-      console.warn("Puter.js gagal, mencoba server cadangan:", puterError);
-    }
+      const errorData = await response.json();
+      if (errorData.error) errorMsg = errorData.error;
+    } catch (e) { }
+    throw new Error(errorMsg);
   }
 
-  // === LAPIS 2: Vercel Proxy → LoremFlickr (foto stok relevan) ===
-  // Server Vercel di Amerika mengambilkan gambar dari LoremFlickr
-  try {
-    console.log("Mencoba Vercel proxy...");
-    const response = await fetch("/api/generate-image", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: imagePrompt })
-    });
-
-    if (response.ok) {
-      const blob = await response.blob();
-      if (blob.size > 0) {
-        return URL.createObjectURL(blob);
-      }
-    }
-  } catch (proxyError) {
-    console.warn("Vercel proxy gagal:", proxyError);
-  }
-
-  // === LAPIS 3: Picsum (gambar acak tapi pasti muncul) ===
-  const seed = Math.floor(Math.random() * 1000);
-  return `https://picsum.photos/seed/${seed}/800/450`;
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 };
