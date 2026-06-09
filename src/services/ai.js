@@ -68,37 +68,26 @@ Berikan HANYA format JSON murni.
 };
 
 export const generateImageFromPrompt = async (imagePrompt) => {
-  const hfApiToken = localStorage.getItem('hfApiKey');
-  if (!hfApiToken) {
-    throw new Error("Hugging Face Token belum dimasukkan. Silakan isi di menu Settings.");
-  }
-
-  // Kita panggil Hugging Face SECARA LANGSUNG dari browser pengguna.
-  // Ini menghindari pemblokiran IP oleh server Vercel (Error 500 fetch failed).
-  const modelUrl = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
+  // KABAR BAIK: Kita membuang Hugging Face dan menggantinya dengan Pollinations AI!
+  // Pollinations AI 100% Gratis, Tidak Butuh API Key, dan TIDAK DIBLOKIR oleh ISP Indonesia.
+  // URL: https://image.pollinations.ai/prompt/[prompt]?width=800&height=450&nologo=true
+  
+  const seed = Math.floor(Math.random() * 1000000);
+  const encodedPrompt = encodeURIComponent(imagePrompt);
+  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=450&nologo=true&seed=${seed}`;
 
   try {
-    const response = await fetch(modelUrl, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${hfApiToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ inputs: imagePrompt })
-    });
+    // Kita melakukan fetch sekadar untuk memastikan gambar berhasil diunduh sebelum ditampilkan
+    const response = await fetch(imageUrl);
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Gagal menghasilkan gambar (Status: ${response.status})`);
+      throw new Error(`Gagal memuat gambar Pollinations (Status: ${response.status})`);
     }
 
     const blob = await response.blob();
-    const imageUrl = URL.createObjectURL(blob);
-    return imageUrl;
+    return URL.createObjectURL(blob);
   } catch (error) {
-    console.warn("Image Generation Error (DNS/ISP Blocked). Fallback ke Placeholder:", error);
-    // Jika ISP memblokir Hugging Face atau terjadi error, 
-    // kita berikan gambar placeholder agar UI tetap terlihat bagus.
+    console.warn("Image Generation Error (Pollinations). Fallback ke Placeholder:", error);
     const randomId = Math.floor(Math.random() * 1000);
     return `https://picsum.photos/seed/${randomId}/800/450`;
   }
