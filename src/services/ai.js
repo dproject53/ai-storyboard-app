@@ -47,23 +47,18 @@ Kembalikan dalam format JSON array yang persis seperti ini, tanpa markdown block
     let cleanJson = responseText.replace(/```json/gi, '').replace(/```/gi, '').trim();
     return JSON.parse(cleanJson);
   } catch (error) {
-    console.warn("Gemini API sibuk/error, mencoba server cadangan gratis (Pollinations AI)...", error);
+    console.warn("Gemini API sibuk/error, mencoba server cadangan dari Vercel US...", error);
     try {
-      // Menggunakan server AI gratis (Pollinations) sebagai cadangan utama!
-      // Server ini sangat tangguh dan tidak peduli dengan limit API Key.
-      const response = await fetch("https://text.pollinations.ai/", {
+      // Menggunakan proxy Vercel untuk membobol blokir ISP pada Pollinations Text
+      const response = await fetch("/api/generate-text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: prompt }],
-          jsonMode: true,
-          seed: Math.floor(Math.random() * 1000000)
-        })
+        body: JSON.stringify({ prompt })
       });
       
-      if (!response.ok) throw new Error("Server cadangan juga penuh.");
-      const textResponse = await response.text();
-      let cleanJson = textResponse.replace(/```json/g, "").replace(/```/g, "").trim();
+      if (!response.ok) throw new Error("Server cadangan Vercel juga penuh.");
+      const data = await response.json();
+      let cleanJson = data.text.replace(/```json/g, "").replace(/```/g, "").trim();
       return JSON.parse(cleanJson);
     } catch (fallbackError) {
       console.error("Semua server AI lumpuh:", fallbackError);
