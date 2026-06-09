@@ -5,11 +5,13 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const [geminiModel, setGeminiModel] = useState('gemini-1.5-flash');
   const [availableModels, setAvailableModels] = useState([]);
   const [isChecking, setIsChecking] = useState(false);
+  const [hfKey, setHfKey] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       setGeminiKey(localStorage.getItem('geminiApiKey') || '');
       setGeminiModel(localStorage.getItem('geminiModel') || 'gemini-1.5-flash');
+      setHfKey(localStorage.getItem('hfApiKey') || '');
       const savedModels = localStorage.getItem('availableGeminiModels');
       if (savedModels) {
         setAvailableModels(JSON.parse(savedModels));
@@ -49,6 +51,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const handleSave = () => {
     localStorage.setItem('geminiApiKey', geminiKey.trim());
     localStorage.setItem('geminiModel', geminiModel);
+    localStorage.setItem('hfApiKey', hfKey.trim());
     alert('Pengaturan API Key dan Model berhasil disimpan!');
     onClose();
   };
