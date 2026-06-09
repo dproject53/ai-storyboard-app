@@ -4,45 +4,29 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { prompt, hfToken } = req.body;
-
-    if (!hfToken || hfToken.trim() === '') {
-      return res.status(400).json({ error: "Token Hugging Face tidak ditemukan. Silakan isi di menu Settings." });
+    const { prompt } = req.body;
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
     }
 
-    const hfResponse = await fetch(
-      "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
-      {
-        headers: {
-          Authorization: `Bearer ${hfToken.trim()}`,
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({ inputs: prompt }),
-      }
-    );
+    const seed = Math.floor(Math.random() * 1000000);
+    const encodedPrompt = encodeURIComponent(prompt);
+    const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=450&nologo=true&seed=${seed}`;
 
-    if (!hfResponse.ok) {
-      const errorData = await hfResponse.json().catch(() => ({}));
-      console.error("HF Error:", hfResponse.status, errorData);
-      
-      // Jika model sedang loading (biasa terjadi di Hugging Face)
-      if (hfResponse.status === 503 && errorData.error && errorData.error.includes("loading")) {
-        const waitTime = errorData.estimated_time || 30;
-        return res.status(503).json({ error: `Model AI sedang dipanaskan (loading). Silakan tunggu sekitar ${Math.ceil(waitTime)} detik dan klik Regenerate.` });
-      }
-      
-      return res.status(hfResponse.status).json({ error: errorData.error || "Hugging Face menolak permintaan. Pastikan Token valid." });
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Pollinations responded with ${response.status}`);
     }
 
-    const imageBuffer = await hfResponse.arrayBuffer();
-    const contentType = hfResponse.headers.get('content-type') || 'image/jpeg';
+    const buffer = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 's-maxage=86400');
-    res.status(200).send(Buffer.from(imageBuffer));
+    res.status(200).send(Buffer.from(buffer));
   } catch (error) {
-    console.error("Internal Server Error:", error);
+    console.error('Image proxy error:', error);
     res.status(500).json({ error: error.message });
   }
 }
+
