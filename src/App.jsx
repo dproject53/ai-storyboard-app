@@ -37,7 +37,7 @@ function App() {
         } catch (imgError) {
           console.error(imgError);
           updatedPanels[i].isLoadingImage = false;
-          updatedPanels[i].desc += " [⚠ Gambar gagal di-generate]";
+          updatedPanels[i].desc += `\n\n[⚠ Error Gambar: ${imgError.message}]`;
           setPanels([...updatedPanels]);
         }
       }
@@ -123,7 +123,7 @@ function App() {
       const url = await generateImageFromPrompt(targetPanel.imagePrompt);
       targetPanel.imageUrl = url;
     } catch (e) {
-      targetPanel.desc += " [⚠ Gagal regenerate]";
+      targetPanel.desc += `\n\n[⚠ Error Gambar: ${e.message}]`;
     }
     
     targetPanel.isLoadingImage = false;
