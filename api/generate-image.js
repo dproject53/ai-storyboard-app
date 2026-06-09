@@ -4,58 +4,52 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { prompt } = req.body;
+    const { prompt, hfToken } = req.body;
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
-    // Ambil kata kunci dari prompt untuk mencari foto yang relevan
-    const keywords = extractKeywords(prompt);
-    const flickrUrl = `https://loremflickr.com/800/450/${keywords}`;
+    if (hfToken && hfToken.trim() !== '') {
+      try {
+        const hfResponse = await fetch(
+          "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+          {
+            headers: {
+              Authorization: `Bearer ${hfToken.trim()}`,
+              "Content-Type": "application/json",
+            },
+            method: "POST",
+            body: JSON.stringify({ inputs: prompt }),
+          }
+        );
+        
+        if (!hfResponse.ok) {
+          const errorData = await hfResponse.json().catch(() => ({}));
+          console.error("HF Error:", hfResponse.status, errorData);
+          
+          if (hfResponse.status === 503 && errorData.error && errorData.error.includes("loading")) {
+            const waitTime = errorData.estimated_time || 30;
+            return res.status(503).json({ error: `Model AI sedang dipanaskan (loading). Tunggu ${Math.ceil(waitTime)} detik lalu klik Regenerate.` });
+          }
+          throw new Error(errorData.error || `Hugging Face menolak permintaan (${hfResponse.status})`);
+        }
 
-    const response = await fetch(flickrUrl, { redirect: 'follow' });
+        const imageBuffer = await hfResponse.arrayBuffer();
+        const contentType = hfResponse.headers.get('content-type') || 'image/jpeg';
 
-    if (response.ok) {
-      const buffer = await response.arrayBuffer();
-      const contentType = response.headers.get('content-type') || 'image/jpeg';
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 's-maxage=3600');
-      return res.status(200).send(Buffer.from(buffer));
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 's-maxage=86400');
+        return res.status(200).send(Buffer.from(imageBuffer));
+      } catch (e) {
+        console.error("HF Fetch error:", e.message);
+        return res.status(500).json({ error: e.message });
+      }
+    } else {
+      return res.status(400).json({ error: "Token Hugging Face tidak ditemukan. Silakan isi di menu Settings." });
     }
 
-    // Jika LoremFlickr juga gagal, gunakan Picsum (gambar acak tapi pasti muncul)
-    const picsumResponse = await fetch('https://picsum.photos/800/450', { redirect: 'follow' });
-    const buffer = await picsumResponse.arrayBuffer();
-    res.setHeader('Content-Type', 'image/jpeg');
-    res.status(200).send(Buffer.from(buffer));
-
   } catch (error) {
-    console.error('Image proxy error:', error);
+    console.error("Internal Server Error:", error);
     res.status(500).json({ error: error.message });
   }
-}
-
-function extractKeywords(prompt) {
-  // Daftar kata yang tidak berguna untuk pencarian gambar
-  const stopWords = new Set([
-    'a', 'an', 'the', 'of', 'in', 'on', 'at', 'to', 'for', 'is', 'are',
-    'was', 'were', 'and', 'or', 'but', 'no', 'not', 'with', 'this', 'that',
-    'from', 'by', 'its', 'has', 'have', 'been', 'being', 'their', 'there',
-    'highly', 'detailed', 'cinematic', 'storyboard', 'panel', 'style',
-    'shot', 'wide', 'close', 'medium', 'establishing', 'text', 'scene',
-    'showing', 'shows', 'image', 'illustration', 'drawing', 'picture',
-    'sketsa', 'hitam', 'putih', 'comic', 'anime', 'realistic',
-    'camera', 'angle', 'view', 'lighting', 'mood', 'tone', 'color',
-    'dan', 'di', 'yang', 'sedang', 'akan', 'juga', 'untuk', 'dengan',
-    'mereka', 'dari', 'ini', 'itu', 'ada', 'bisa', 'sudah', 'belum',
-    'very', 'much', 'more', 'also', 'just', 'like', 'into', 'over'
-  ]);
-
-  const words = prompt.toLowerCase()
-    .replace(/[^a-z\s]/g, '')
-    .split(/\s+/)
-    .filter(w => w.length > 2 && !stopWords.has(w));
-
-  const unique = [...new Set(words)].slice(0, 3);
-  return unique.length > 0 ? unique.join(',') : 'illustration,scene';
 }
