@@ -73,7 +73,7 @@ export const generateImageFromPrompt = async (imagePrompt) => {
     ? "/api/generate-image" 
     : "http://localhost:3001/api/generate-image";
 
-  const hfApiToken = localStorage.getItem('hfApiToken');
+  const hfApiToken = localStorage.getItem('hfApiKey');
   if (!hfApiToken) {
     throw new Error("Hugging Face Token belum dimasukkan. Silakan isi di menu Settings.");
   }
