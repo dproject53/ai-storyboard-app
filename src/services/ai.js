@@ -94,28 +94,20 @@ Kembalikan dalam format JSON array yang persis seperti ini, tanpa markdown block
 };
 
 export const generateImageFromPrompt = async (imagePrompt) => {
-  const hfToken = localStorage.getItem('hfApiKey');
+  const hfToken = localStorage.getItem('hfApiKey') || '';
   
-  if (hfToken) {
-    // Gunakan Hugging Face jika pengguna memasukkan token
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
-      {
-        headers: {
-          Authorization: `Bearer ${hfToken}`,
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({ inputs: imagePrompt }),
-      }
-    );
-    if (!response.ok) throw new Error("Hugging Face API gagal memproses gambar.");
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-  } else {
-    // Fallback ke server gambar gratis jika tidak ada token
-    const seed = Math.floor(Math.random() * 1000000);
-    const encodedPrompt = encodeURIComponent(imagePrompt);
-    return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=450&nologo=true&seed=${seed}`;
+  // Meminta server Vercel (Backend) untuk mengambilkan gambar.
+  // Ini 100% membobol blokir ISP karena browser hanya berkomunikasi dengan Vercel!
+  const response = await fetch("/api/generate-image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: imagePrompt, hfToken })
+  });
+
+  if (!response.ok) {
+    throw new Error("Gagal mengambil gambar dari server Vercel.");
   }
+
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 };
