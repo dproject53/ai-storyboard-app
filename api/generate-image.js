@@ -5,51 +5,44 @@ export default async function handler(req, res) {
 
   try {
     const { prompt, hfToken } = req.body;
-    let imageBuffer = null;
-    let contentType = 'image/jpeg';
 
-    if (hfToken && hfToken.trim() !== '') {
-      try {
-        const hfResponse = await fetch(
-          "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
-          {
-            headers: {
-              Authorization: `Bearer ${hfToken.trim()}`,
-              "Content-Type": "application/json",
-            },
-            method: "POST",
-            body: JSON.stringify({ inputs: prompt }),
-          }
-        );
-        if (hfResponse.ok) {
-          imageBuffer = await hfResponse.arrayBuffer();
-          contentType = hfResponse.headers.get('content-type') || 'image/jpeg';
-        } else {
-          console.warn("Hugging Face API failed, falling back to Pollinations");
-        }
-      } catch (e) {
-        console.warn("HF Fetch error:", e.message);
+    if (!hfToken || hfToken.trim() === '') {
+      return res.status(400).json({ error: "Token Hugging Face tidak ditemukan. Silakan isi di menu Settings." });
+    }
+
+    const hfResponse = await fetch(
+      "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
+      {
+        headers: {
+          Authorization: `Bearer ${hfToken.trim()}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({ inputs: prompt }),
       }
-    }
+    );
 
-    // Fallback to Pollinations if HF fails or no token
-    if (!imageBuffer) {
-      const seed = Math.floor(Math.random() * 1000000);
-      const encodedPrompt = encodeURIComponent(prompt);
-      const pollUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=450&nologo=true&seed=${seed}`;
+    if (!hfResponse.ok) {
+      const errorData = await hfResponse.json().catch(() => ({}));
+      console.error("HF Error:", hfResponse.status, errorData);
       
-      const pollResponse = await fetch(pollUrl);
-      if (!pollResponse.ok) throw new Error("Semua server gambar gagal memproses permintaan.");
-      imageBuffer = await pollResponse.arrayBuffer();
-      contentType = pollResponse.headers.get('content-type') || 'image/jpeg';
+      // Jika model sedang loading (biasa terjadi di Hugging Face)
+      if (hfResponse.status === 503 && errorData.error && errorData.error.includes("loading")) {
+        const waitTime = errorData.estimated_time || 30;
+        return res.status(503).json({ error: `Model AI sedang dipanaskan (loading). Silakan tunggu sekitar ${Math.ceil(waitTime)} detik dan klik Regenerate.` });
+      }
+      
+      return res.status(hfResponse.status).json({ error: errorData.error || "Hugging Face menolak permintaan. Pastikan Token valid." });
     }
 
-    // Send the image back to the client
+    const imageBuffer = await hfResponse.arrayBuffer();
+    const contentType = hfResponse.headers.get('content-type') || 'image/jpeg';
+
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 's-maxage=86400');
     res.status(200).send(Buffer.from(imageBuffer));
   } catch (error) {
-    console.error("Image Gen Error:", error);
+    console.error("Internal Server Error:", error);
     res.status(500).json({ error: error.message });
   }
 }
