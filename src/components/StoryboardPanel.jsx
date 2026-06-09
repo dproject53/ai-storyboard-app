@@ -14,22 +14,30 @@ const StoryboardPanel = ({ index, data, onRegenerate, onEdit }) => {
       {/* Image Area */}
       <div style={{ 
         width: '100%', 
-        height: '220px', // FIX: Paksa tinggi tetap agar gambar tidak collapse!
+        height: '220px', 
         backgroundColor: 'var(--bg-input)', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
         position: 'relative',
-        backgroundImage: data.imageUrl ? `url(${data.imageUrl})` : 'none',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center'
+        overflow: 'hidden'
       }}>
-        {!data.imageUrl && (
+        {data.imageUrl ? (
+          <img 
+            src={data.imageUrl} 
+            alt={`Scene ${index}`}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onError={(e) => { 
+              e.target.onerror = null; 
+              e.target.src = `https://picsum.photos/seed/${data.id || index}/800/450`; 
+            }}
+          />
+        ) : (
           <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
             {data.isLoadingImage ? "🎨 Menggambar AI..." : `[ Image: ${data.shotType} ]`}
           </span>
         )}
-        <div style={{ position: 'absolute', top: '10px', left: '10px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>
+        <div style={{ position: 'absolute', top: '10px', left: '10px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', zIndex: 2, color: 'white' }}>
           Scene {index}
         </div>
       </div>
