@@ -36,6 +36,10 @@ export default async function handler(req, res) {
     res.send(buffer);
   } catch (error) {
     console.error("Vercel Serverless Error:", error);
-    res.status(500).json({ error: "Terjadi kesalahan internal saat menghubungi Hugging Face via Vercel." });
+    res.status(500).json({ 
+      error: "Terjadi kesalahan internal saat menghubungi Hugging Face via Vercel.",
+      details: error.message,
+      stack: error.stack
+    });
   }
 }
